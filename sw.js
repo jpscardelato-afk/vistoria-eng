@@ -1,7 +1,7 @@
 /* Service Worker — Vistoria de Engenharia
    Estratégia: cache-first para os arquivos do app (funcionamento offline total). */
 
-const CACHE = 'pericia-js-v1';
+const CACHE = 'pericia-js-v2';
 const ARQUIVOS = [
   './',
   './index.html',
