@@ -1,0 +1,55 @@
+{
+  "name": "Vistoria de Engenharia",
+  "short_name": "Vistoria",
+  "description": "Coleta estruturada de dados em vistoria técnica de engenharia.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d2c4b",
+  "theme_color": "#0d2c4b",
+  "categories": [
+    "productivity",
+    "business",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Setores",
+      "url": "./index.html#/setores"
+    },
+    {
+      "name": "Itens",
+      "url": "./index.html#/itens"
+    },
+    {
+      "name": "Quesitos",
+      "url": "./index.html#/quesitos"
+    },
+    {
+      "name": "Backup",
+      "url": "./index.html#/backup"
+    }
+  ]
+}
