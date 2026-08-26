@@ -252,11 +252,14 @@
 
   function galeria(fotos) {
     if (!fotos.length) return '<div class="vazio">Nenhuma fotografia registrada.</div>';
-    return '<div class="galeria">' + fotos.map(f => `
+    return '<div class="dica-foto">Toque na foto para editar a legenda, ou no ✕ para excluir.</div>' +
+      '<div class="galeria">' + fotos.map(f => `
       <div class="foto" onclick="PERICIA_APP.abrirFoto('${A(f.id)}')">
         <img data-foto="${A(f.id)}" alt="${A(f.arquivo)}">
         <span class="n">${f.numero}</span>
         ${f.principal ? '<span class="p">PRINCIPAL</span>' : ''}
+        <button class="x" aria-label="Excluir foto ${f.numero}" title="Excluir foto"
+          onclick="event.stopPropagation();PERICIA_APP.excluirFoto('${A(f.id)}')">✕</button>
         <span class="lg">${esc(f.categoria)}${f.legenda ? ' — ' + esc(f.legenda) : ''}</span>
       </div>`).join('') + '</div>';
   }
@@ -267,6 +270,10 @@
     const u = await urlFoto(id);
     abrirModal(`
       <h3>Foto nº ${f.numero}</h3>
+      <div class="barra-botoes" style="margin-top:0">
+        <button class="btn primario" onclick="fecharModal();PERICIA_APP.render()">✓ Concluir</button>
+        <button class="btn perigo" onclick="PERICIA_APP.excluirFoto('${A(f.id)}')">🗑 Excluir foto</button>
+      </div>
       <img class="grande" src="${A(u)}" alt="">
       <div class="aviso info"><b>${esc(f.arquivo)}</b>
         ${esc(f.data)} às ${esc(f.hora)} • Setor: ${esc(setorNome(f.setorId))}${f.itemCodigo ? ' • Item ' + esc(f.itemCodigo) : ''}</div>
@@ -277,17 +284,25 @@
         ${f.itemId ? check('fotos', f.id, f, 'principal', 'Foto principal do item') : ''}
       </div>
       <div class="barra-botoes">
-        <button class="btn primario" onclick="fecharModal();PERICIA_APP.render()">Concluir</button>
-        <button class="btn perigo" onclick="PERICIA_APP.excluirFoto('${A(f.id)}')">Excluir foto</button>
+        <button class="btn primario bloco" onclick="fecharModal();PERICIA_APP.render()">✓ Concluir</button>
       </div>`);
   }
 
   async function excluirFoto(id) {
-    if (!confirm('Excluir definitivamente esta fotografia?')) return;
-    DB.fotos = DB.fotos.filter(f => f.id !== id);
+    const f = DB.fotos.find(x => x.id === id);
+    if (!f) return;
+    if (!confirm('Excluir definitivamente a fotografia nº ' + f.numero + '?\n\n' +
+      'O número ' + f.numero + ' não será reaproveitado por outra foto.')) return;
+    const itemId = f.itemId, eraPrincipal = !!f.principal;
+    DB.fotos = DB.fotos.filter(x => x.id !== id);
     await P.idbDel('fotos', id); await P.idbDel('blobs', id);
     delete urlCache[id];
-    fecharModal(); render(); toast('Foto excluída');
+    /* se a excluída era a principal, promove a próxima foto do mesmo item */
+    if (eraPrincipal && itemId) {
+      const prox = DB.fotos.find(x => x.itemId === itemId);
+      if (prox) { prox.principal = true; await P.salvar('fotos', prox, true); }
+    }
+    fecharModal(); render(); toast('Foto nº ' + f.numero + ' excluída');
   }
 
   /* ------------------------- seletor genérico ------------------------ */
