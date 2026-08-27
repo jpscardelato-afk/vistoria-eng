@@ -606,7 +606,7 @@
     }
     await idbPut('meta', dump.meta);
     for (const k of ['setores', 'itens', 'fotos', 'insumos', 'quesitos', 'pendencias', 'participantes']) {
-      for (const o of (dump[k] || [])) await idbPut(k, o);
+      await window.PERICIA_DB.idbPutMany(k, dump[k] || []);
     }
     for (const id in blobs) await idbPut('blobs', { id, blob: blobs[id] });
     return true;
