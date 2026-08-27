@@ -870,7 +870,52 @@
       + bloco('AUTORA') + bloco('FAZENDA')
       + `<div class="barra-botoes"><button class="btn" onclick="PERICIA_APP.novoQuesito('AUTORA')">+ Quesito da Autora</button>
          <button class="btn" onclick="PERICIA_APP.novoQuesito('FAZENDA')">+ Quesito da Fazenda</button>
-         <button class="btn" onclick="PERICIA_APP.novoQuesito('COMPLEMENTAR')">+ Quesito complementar</button></div>`;
+         <button class="btn" onclick="PERICIA_APP.novoQuesito('COMPLEMENTAR')">+ Quesito complementar</button></div>
+         <div class="card"><h3>Importar textos dos quesitos</h3>
+           <p style="font-size:14px;color:#4a545e;margin-top:0">
+             Carrega um arquivo <code>.json</code> com os textos integrais e substitui apenas o texto de
+             cada quesito. Suas respostas, vínculos e status permanecem intactos.</p>
+           <input type="file" accept=".json" id="inpQuesitos" class="arquivo-oculto">
+           <div class="barra-botoes">
+             <button class="btn bloco" onclick="document.getElementById('inpQuesitos').click()">
+               ↓ Importar textos dos quesitos</button>
+           </div>
+           <div id="progQues" class="progresso-exp"></div>
+         </div>`;
+    document.getElementById('inpQuesitos').addEventListener('change', ev => {
+      const f = ev.target.files[0]; if (f) importarQuesitos(f);
+      ev.target.value = '';
+    });
+  }
+
+  async function importarQuesitos(file) {
+    const prog = document.getElementById('progQues');
+    try {
+      const dados = JSON.parse(await file.text());
+      const lista = Array.isArray(dados) ? dados : (dados.quesitos || []);
+      if (!lista.length) throw new Error('Nenhum quesito encontrado no arquivo.');
+      let atualizados = 0, criados = 0;
+      for (const q of lista) {
+        const parte = String(q.parte || '').toUpperCase();
+        const numero = parseInt(q.numero, 10);
+        const texto = String(q.texto || '');
+        if (!parte || !numero || !texto) continue;
+        const alvo = DB.quesitos.find(x => x.parte === parte && x.numero === numero);
+        if (alvo) { alvo.texto = texto; await P.salvar('quesitos', alvo, true); atualizados++; }
+        else {
+          const novo = P.novoQuesito({ parte, numero, texto });
+          DB.quesitos.push(novo); await P.idbPut('quesitos', novo); criados++;
+        }
+      }
+      P.ordenar();
+      if (prog) prog.textContent = atualizados + ' quesito(s) atualizado(s)' +
+        (criados ? ', ' + criados + ' criado(s)' : '') + '.';
+      toast('Textos dos quesitos carregados');
+      setTimeout(render, 900);
+    } catch (e) {
+      if (prog) prog.textContent = 'Falha ao importar: ' + e.message;
+      else alert('Falha ao importar: ' + e.message);
+    }
   }
 
   async function novoQuesito(parte) {
@@ -1334,7 +1379,7 @@
     render, iniciar, iniciarVistoria, marcarHora, marcarSetor, proximoSetor,
     criarVistoriaVazia, novoItemNoSetor, marcarVistoriado, irItemVizinho, excluirItem, toggleFiltro,
     novoInsumo, toggleInsumo, excluirInsumo,
-    novoQuesito, marcarQuesito, irQuesitoVizinho, abrirSeletorItens, abrirSeletorFotos,
+    novoQuesito, importarQuesitos, marcarQuesito, irQuesitoVizinho, abrirSeletorItens, abrirSeletorFotos,
     novaPendencia, excluirPendencia, novoParticipante, excluirParticipante,
     abrirFoto, excluirFoto, exportar, exportarChatGPT, baixarTexto, baixarCsv, imprimir,
     backup, zerar
