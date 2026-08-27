@@ -119,8 +119,7 @@ const ALERTA_QUESITOS =
    Este aplicativo é distribuído sem dados de vistoria.
    Os setores, bens, insumos e quesitos são carregados no próprio
    dispositivo, pela tela inicial ("Carregar arquivo da vistoria") ou
-   pela tela Backup. Nada de conteúdo de vistoria trafega por este
-   endereço.
+   pela tela Backup.
    --------------------------------------------------------------------- */
 
 const SETORES_SEED = [];
