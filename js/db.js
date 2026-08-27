@@ -10,13 +10,25 @@ let _db = null;
 
 function openDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    let resolvido = false;
+    const encerra = fn => (arg) => { if (resolvido) return; resolvido = true; clearTimeout(timer); fn(arg); };
+    const okc = encerra(resolve), errc = encerra(reject);
+    const timer = setTimeout(() => errc(new Error(
+      'Tempo esgotado ao abrir o armazenamento local do navegador. ' +
+      'Feche todas as janelas do aplicativo e abra novamente.')), 10000);
+
+    let req;
+    try { req = indexedDB.open(DB_NAME, DB_VERSION); }
+    catch (e) { return errc(e); }
+
     req.onupgradeneeded = ev => {
       const db = ev.target.result;
       STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' }); });
     };
-    req.onsuccess = () => { _db = req.result; resolve(_db); };
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => { _db = req.result; okc(_db); };
+    req.onerror = () => errc(req.error || new Error('Falha ao abrir o armazenamento local.'));
+    req.onblocked = () => errc(new Error(
+      'O armazenamento local está bloqueado por outra janela do aplicativo. Feche as demais e tente de novo.'));
   });
 }
 
@@ -34,6 +46,18 @@ function idbDel(store, id) {
 function idbAll(store) {
   return new Promise((res, rej) => { const r = tx(store, 'readonly').getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error); });
 }
+function idbPutMany(store, objs) {
+  if (!objs || !objs.length) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const t = _db.transaction(store, 'readwrite');
+    const os = t.objectStore(store);
+    objs.forEach(o => os.put(o));
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error || new Error('Transação abortada em ' + store));
+  });
+}
+
 function idbClear(store) {
   return new Promise((res, rej) => { const r = tx(store, 'readwrite').clear(); r.onsuccess = () => res(); r.onerror = () => rej(r.error); });
 }
@@ -146,7 +170,7 @@ async function seedIfEmpty() {
       status: 'Não iniciado', inicio: '', fim: '',
       participantes: [], observacoes: '', documentos: ''
     }));
-    for (const s of DB.setores) await idbPut('setores', s);
+    await idbPutMany('setores', DB.setores);
   }
   DB.setores.sort((a, b) => a.ordem - b.ordem);
 
@@ -158,19 +182,19 @@ async function seedIfEmpty() {
       setorAutos: setorNome[row[2]] || '', classificacao: row[3] || '',
       preCadastrado: true
     }));
-    for (const it of DB.itens) await idbPut('itens', it);
+    await idbPutMany('itens', DB.itens);
   }
 
   DB.insumos = await idbAll('insumos');
   if (!DB.insumos.length) {
     DB.insumos = D.INSUMOS_SEED.map(i => novoInsumo({ nome: i.nome, funcaoFQ: i.funcaoFQ }));
-    for (const i of DB.insumos) await idbPut('insumos', i);
+    await idbPutMany('insumos', DB.insumos);
   }
 
   DB.quesitos = await idbAll('quesitos');
   if (!DB.quesitos.length) {
     DB.quesitos = D.QUESITOS_SEED.map(q => novoQuesito({ parte: q.parte, numero: q.numero, texto: q.texto || '' }));
-    for (const q of DB.quesitos) await idbPut('quesitos', q);
+    await idbPutMany('quesitos', DB.quesitos);
   }
 
   DB.fotos = await idbAll('fotos');
@@ -222,13 +246,15 @@ async function flushSaves() {
   // re-salva tudo de forma síncrona-ish
   for (const s of ['meta', 'setores', 'itens', 'fotos', 'insumos', 'quesitos', 'pendencias', 'participantes']) {
     if (s === 'meta') { if (DB.meta) await idbPut('meta', DB.meta); continue; }
-    for (const o of DB[s]) await idbPut(s, o);
+    await idbPutMany(s, DB[s]);
   }
   keys.forEach(k => delete _pend[k]);
 }
 
+window.__DBNAME = DB_NAME;
+
 window.PERICIA_DB = {
-  openDB, seedIfEmpty, DB, salvar, flushSaves, bloquearEscritas, liberarEscritas,
+  openDB, idbPutMany, seedIfEmpty, DB, salvar, flushSaves, bloquearEscritas, liberarEscritas,
   idbPut, idbGet, idbDel, idbAll, idbClear,
   uid, nowISO, hojeData, agoraHora,
   novoItem, novoInsumo, novoQuesito, novaPendencia, novoParticipante, ordenar
