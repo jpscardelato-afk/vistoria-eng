@@ -1,7 +1,7 @@
 /* Service Worker — Vistoria de Engenharia
    Estratégia: cache-first para os arquivos do app (funcionamento offline total). */
 
-const CACHE = 'pericia-js-v3';
+const CACHE = 'pericia-js-v4';
 const ARQUIVOS = [
   './',
   './index.html',
@@ -18,11 +18,14 @@ const ARQUIVOS = [
 ];
 
 self.addEventListener('install', ev => {
+  /* addAll() falha inteiro se UM arquivo falhar, deixando o cache vazio.
+     Aqui cada arquivo é independente e o skipWaiting sempre acontece. */
   ev.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(ARQUIVOS))
+      .then(c => Promise.allSettled(ARQUIVOS.map(u =>
+        fetch(u, { cache: 'reload' }).then(r => (r && r.ok) ? c.put(u, r) : null).catch(() => null))))
+      .catch(() => null)
       .then(() => self.skipWaiting())
-      .catch(e => console.warn('Falha ao pré-cachear:', e))
   );
 });
 
