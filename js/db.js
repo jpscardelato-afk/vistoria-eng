@@ -169,7 +169,7 @@ async function seedIfEmpty() {
 
   DB.quesitos = await idbAll('quesitos');
   if (!DB.quesitos.length) {
-    DB.quesitos = D.QUESITOS_SEED.map(q => novoQuesito({ parte: q.parte, numero: q.numero }));
+    DB.quesitos = D.QUESITOS_SEED.map(q => novoQuesito({ parte: q.parte, numero: q.numero, texto: q.texto || '' }));
     for (const q of DB.quesitos) await idbPut('quesitos', q);
   }
 
