@@ -4,6 +4,7 @@
    ===================================================================== */
 
 (function () {
+  const APP_VERSAO = 'v4 — 27/08/2026';
   const D = window.PERICIA_DATA;
   const P = window.PERICIA_DB;
   const X = window.PERICIA_EXPORT;
@@ -1232,6 +1233,15 @@
       <h3>Armazenamento</h3>
       <div id="uso" class="progresso-exp">calculando...</div>
       <div class="barra-botoes"><button class="btn perigo pequeno" onclick="PERICIA_APP.zerar()">Apagar todos os dados deste dispositivo</button></div>
+    </div>
+    <div class="card">
+      <h3>Manutenção do aplicativo</h3>
+      <p style="font-size:14px;color:#4a545e;margin-top:0">Se o aplicativo travar na abertura ou ficar com telas antigas,
+      recarregue ignorando o cache. Isso <b>não</b> apaga os dados da vistoria.</p>
+      <div class="barra-botoes">
+        <button class="btn bloco" onclick="window.__recarregarLimpo()">Recarregar ignorando o cache</button>
+      </div>
+      <div class="progresso-exp">Versão em uso: ${esc(APP_VERSAO)}</div>
     </div>`;
 
     document.getElementById('inpRestore').addEventListener('change', async e => {
@@ -1277,6 +1287,7 @@
   function telaInstalar() {
     cabecalho('Como instalar no tablet', 'Android e iPad', '#/');
     app().innerHTML = `
+    <div class="aviso info"><b>Versão instalada neste dispositivo</b>${esc(APP_VERSAO)}</div>
     ${window.SEM_SW ? `<div class="aviso crit"><b>Esta é a versão de demonstração online (arquivo único)</b>
       Ela salva os dados no navegador e exporta normalmente, mas <b style="display:inline">não</b> possui cache offline.
       Para uso em campo sem internet, hospede a versão completa em pasta (com <code>sw.js</code> e <code>manifest.webmanifest</code>)
@@ -1366,12 +1377,21 @@
     try {
       await P.openDB();
       await P.seedIfEmpty();
-      if (navigator.storage && navigator.storage.persist) { try { await navigator.storage.persist(); } catch (e) { } }
       render();
+      window.PERICIA_PRONTO = true;
+      /* pedido de armazenamento persistente NÃO pode bloquear a abertura:
+         em alguns navegadores a promessa nunca resolve. */
+      if (navigator.storage && navigator.storage.persist) {
+        try { navigator.storage.persist().catch(() => { }); } catch (e) { }
+      }
     } catch (e) {
+      window.PERICIA_PRONTO = true;
       document.getElementById('app').innerHTML =
-        `<div class="aviso crit"><b>Não foi possível abrir o banco de dados local</b>${esc(e.message)}<br>
-        Verifique se o navegador não está em modo privado/anônimo.</div>`;
+        `<div class="aviso crit"><b>Não foi possível abrir o aplicativo</b>${esc(e.message || e)}</div>
+        <div class="barra-botoes"><button class="btn primario bloco" onclick="location.reload()">Tentar novamente</button></div>
+        <div class="barra-botoes"><button class="btn bloco" onclick="window.__recarregarLimpo()">Recarregar ignorando o cache</button></div>
+        <div class="aviso">Se o navegador estiver em modo privado/anônimo, o armazenamento local fica indisponível.
+        Abra o aplicativo pelo ícone instalado ou em uma janela normal do Chrome.</div>`;
     }
   }
 
