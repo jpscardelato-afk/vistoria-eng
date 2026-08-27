@@ -34,6 +34,50 @@
 <script src="js/export.js"></script>
 <script src="js/app.js"></script>
 <script>
+/* ---- socorro: o aplicativo nunca pode ficar preso na tela de abertura ---- */
+window.__erroInicial = null;
+window.addEventListener('error', function (e) {
+  if (!window.__erroInicial) window.__erroInicial = (e && e.message) || 'erro não identificado';
+});
+window.addEventListener('unhandledrejection', function (e) {
+  if (!window.__erroInicial) window.__erroInicial = 'promessa rejeitada: ' + ((e && e.reason && e.reason.message) || e.reason || '');
+});
+
+window.__recarregarLimpo = function () {
+  var fim = function () { location.reload(); };
+  var passos = [];
+  if (window.caches) passos.push(caches.keys().then(function (ks) {
+    return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+  }));
+  if (navigator.serviceWorker) passos.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+    return Promise.all(rs.map(function (r) { return r.unregister(); }));
+  }));
+  Promise.all(passos).then(fim, fim);
+  setTimeout(fim, 4000);
+};
+
+window.__apagarBase = function () {
+  if (!confirm('Apagar TODOS os dados do aplicativo neste dispositivo? Só faça isso se tiver o backup ou o arquivo-semente.')) return;
+  try { indexedDB.deleteDatabase(window.__DBNAME || 'vistoria_eng_v1'); } catch (e) { }
+  setTimeout(function () { location.reload(); }, 1000);
+};
+
+setTimeout(function () {
+  if (window.PERICIA_PRONTO) return;
+  var el = document.getElementById('app');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="aviso crit"><b>O aplicativo não terminou de abrir</b>' +
+    (window.__erroInicial ? ('Detalhe técnico: ' + window.__erroInicial)
+      : 'Nenhum erro foi reportado. Normalmente é cache desatualizado ou o armazenamento local preso.') +
+    '</div>' +
+    '<div class="barra-botoes"><button class="btn primario bloco" onclick="location.reload()">Tentar novamente</button></div>' +
+    '<div class="barra-botoes"><button class="btn bloco" onclick="window.__recarregarLimpo()">Recarregar ignorando o cache</button></div>' +
+    '<div class="barra-botoes"><button class="btn perigo bloco" onclick="window.__apagarBase()">Apagar dados locais e recomeçar</button></div>' +
+    '<div class="aviso">Comece pelo botão do meio: ele troca os arquivos do aplicativo e <b>preserva</b> os dados da vistoria. ' +
+    'O último apaga tudo — use apenas com o backup ou a semente em mãos.</div>';
+}, 9000);
+
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').catch(function (e) {
